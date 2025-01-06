@@ -1,45 +1,75 @@
-const Payment = require("../models/payment");
-const stripe = require('stripe')("sk_test_51OQBiWIHoIMM5DdU1utEYQkdD6Ca9ZETR2rrRxfkQVnOWOqOVn0p7Hg8z9xV0xdZoNZAoOw4zHoVIEctDHdr1LWQ00Yw6YVHII");
+import Payment from '../models/paymentModel.js';
+import Stripe from 'stripe';
 
-const createPaymentSession = async (req, res) => {
-    try {
-        const { products } = req.body;
+const secretKey = process.env.STRIPE_SECRET_KEY; // Corrected spelling
+if (!secretKey) {
+  throw new Error('SECRET_KEY is not defined in environment variables');
+}
 
-        if (!Array.isArray(products) || products.some(product => !product.name || !product.image || !product.price || !product.quantity)) {
-            return res.status(400).json({ error: "Invalid products array" });
-        }
+const stripe = new Stripe(secretKey);
 
-        const lineItems = products.map(product => ({
-            price_data: {
-                currency: 'usd',
-                product_data: {
-                    name: product.name,
-                    images: [product.image],
-                },
-                unit_amount: Math.round(product.price * 100),
-            },
-            quantity: product.quantity,
-        }));
+export const createPaymentSession = async (req, res) => {
+  try {
+    const { products } = req.body;
 
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: lineItems,
-            mode: 'payment',
-            success_url: process.env.SUCCESS_URL || 'http://localhost:5173/',
-            cancel_url: process.env.CANCEL_URL || 'http://localhost:5173/',
-        });
+    console.log(products[0]);
 
-        const payment = new Payment({
-            sessionId: session.id,
-            products,
-        });
-        await payment.save();
-
-        res.json({ id: session.id });
-    } catch (error) {
-        console.error("Error creating payment session:", error.message);
-        res.status(500).json({ error: 'Failed to create payment session' });
+    // Validate products array
+    if (
+      !Array.isArray(products) ||
+      products.some((product) => 
+        !product.price_data || 
+        !product.quantity ||
+        typeof product.quantity !== 'number'
+      )
+    ) {
+      return res.status(400).json({ error: 'Invalid products array' });
     }
-};
 
-module.exports = { createPaymentSession };
+    // Map frontend data to Stripe's `line_items`
+    const lineItems = products.map((product) => ({
+      price_data: {
+        currency: product.price_data.currency,
+        product_data: {
+          name: product.price_data.product_data.name,
+          images: Array.isArray(product.price_data.product_data.images)
+            ? product.price_data.product_data.images
+            : [],
+        },
+        unit_amount: product.price_data.unit_amount, // Amount in cents
+      },
+      quantity: product.quantity,
+    }));
+
+    // Create a Stripe session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: lineItems,
+      mode: 'payment',
+      success_url: process.env.SUCCESS_URL || 'http://localhost:5173/checkout/success',
+      cancel_url: process.env.CANCEL_URL || 'http://localhost:5173/checkout/cancel',
+    });
+
+    // Save session details to the database
+    const payment = new Payment({
+      sessionId: session.id,
+      products: products.map((product) => ({
+        name: product.price_data.product_data.name,
+        image: Array.isArray(product.price_data.product_data.images)
+          ? product.price_data.product_data.images[0] || ''
+          : '',
+        price: product.price_data.unit_amount, // Price in cents
+        quantity: product.quantity,
+      })),
+    });
+    await payment.save();
+
+    res.json({ id: session.id });
+  } catch (error) {
+    console.error('Error creating payment session:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({ error: 'Failed to create payment session' });
+  }
+};

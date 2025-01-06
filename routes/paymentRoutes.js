@@ -1,12 +1,9 @@
-const express = require("express");
-const { createPaymentSession } = require("../controllers/payment");
+import express from 'express';
+import { createPaymentSession } from '../controllers/paymentControllers.js'; // Include `.js` for ES Modules
+
 const router = express.Router();
 
+// Define routes
+router.post('/create-checkout-session', createPaymentSession);
 
-// router.post("/create-payment-intent", placementOrder);
-router.post("/create-checkout-session", createPaymentSession);
-
-
-
-
-module.exports = router;
+export default router; // Use `export default` for consistency with ES Modules
