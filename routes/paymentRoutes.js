@@ -1,5 +1,5 @@
 import express from 'express';
-import { createPaymentSession } from '../controllers/paymentControllers.js'; // Include `.js` for ES Modules
+import { createPaymentSession } from '../controllers/payment.js'
 
 const router = express.Router();
 

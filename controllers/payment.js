@@ -1,5 +1,7 @@
-import Payment from '../models/paymentModel.js';
+import Payment from '../models/payment.js';
 import Stripe from 'stripe';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const secretKey = process.env.STRIPE_SECRET_KEY; // Corrected spelling
 if (!secretKey) {
