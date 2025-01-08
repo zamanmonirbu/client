@@ -52,6 +52,10 @@ export const payWithIdeal = async (req, res) => {
   } = req.body;
 
 
+
+  // console.log(req.body)
+
+
   // Validate input
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Items array is required and cannot be empty.' });
@@ -91,6 +95,10 @@ export const payWithIdeal = async (req, res) => {
         quantity: item.quantity,
       })),
       mode: 'payment',
+
+      success_url: `${process.env.CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`, // Update with your frontend success URL
+  cancel_url: `${process.env.CLIENT_URL}/checkout/cancel`, // Update with your frontend cancel URL
+
      
     });
 
