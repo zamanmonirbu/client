@@ -91,8 +91,7 @@ export const payWithIdeal = async (req, res) => {
         quantity: item.quantity,
       })),
       mode: 'payment',
-      success_url: 'http://localhost:5173/checkout/success', // Replace with your success URL
-      cancel_url: 'http://localhost:5173/checkout/cancel', // Replace with your cancel URL
+     
     });
 
     // Respond with the session URL for frontend redirection
