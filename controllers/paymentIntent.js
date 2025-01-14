@@ -2,8 +2,8 @@ import Stripe from 'stripe';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const stripe = new Stripe("sk_test_51Nwt8KJkLvblZeilCj18Ez4zee3T65g2PBVA66iLOk2ikccGCOcu2EUOx0uc2G88bdM2EnD2GIhmXLdcNQpyiVpj00P6pwrYE6    ");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// const stripe = new Stripe("sk_test_51Nwt8KJkLvblZeilCj18Ez4zee3T65g2PBVA66iLOk2ikccGCOcu2EUOx0uc2G88bdM2EnD2GIhmXLdcNQpyiVpj00P6pwrYE6    ");
 
 export const paymentIntent = async (req, res) => {
   const { items } = req.body;
