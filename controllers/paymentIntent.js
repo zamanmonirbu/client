@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-// const stripe = new Stripe("sk_test_51Nwt8KJkLvblZeilCj18Ez4zee3T65g2PBVA66iLOk2ikccGCOcu2EUOx0uc2G88bdM2EnD2GIhmXLdcNQpyiVpj00P6pwrYE6    ");
 
 export const paymentIntent = async (req, res) => {
   const { items } = req.body;
@@ -45,73 +44,122 @@ const totalAmount = items.reduce((total, item) => {
 
 
 
+
 export const payWithIdeal = async (req, res) => {
-  const {
-    dataPass: { method },
-    items,
-  } = req.body;
+  const { items, dataPass } = req.body;
+  const { bankId: selectedBank } = dataPass;
 
-
-
-  // console.log(req.body)
-
+  console.log(items, selectedBank)
 
   // Validate input
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Items array is required and cannot be empty.' });
   }
 
-  if (!method || method !== 'ideal') {
-    return res.status(400).json({ error: 'Invalid or missing payment method.' });
-  }
-
   try {
     // Calculate the total amount in cents
     const totalAmount = items.reduce((total, item) => {
-      if (
-        !item.price ||
-        !item.quantity ||
-        typeof item.price !== 'number' ||
-        typeof item.quantity !== 'number'
-      ) {
+      if (!item.price || !item.quantity || typeof item.price !== 'number' || typeof item.quantity !== 'number') {
         throw new Error('Each item must have a valid price and quantity.');
       }
       return total + Math.round(item.price * item.quantity * 100); // Convert to cents
     }, 0);
 
-    // Create a Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['ideal'], // iDEAL payment method
-      line_items: items.map((item) => ({
-        price_data: {
-          currency: 'eur', // Currency for iDEAL payments
-          product_data: {
-            name: item.name,
-            description: `${item.storage}, ${item.color}, ${item.condition}`, // Item details
-            images: [item.image], // Product image
-          },
-          unit_amount: Math.round(item.price * 100), // Convert price to cents
+    // Create and confirm a PaymentIntent for iDEAL
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: totalAmount,
+      currency: 'eur', // iDEAL only supports EUR
+      payment_method_types: ['ideal'],
+      payment_method_data: {
+        type: 'ideal',
+        ideal: {
+          bank: selectedBank, // Pass the selected bank here
         },
-        quantity: item.quantity,
-      })),
-      mode: 'payment',
-
-      success_url: `${process.env.CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`, // Update with your frontend success URL
-  cancel_url: `${process.env.CLIENT_URL}/checkout/cancel`, // Update with your frontend cancel URL
-
-     
+      },
+      return_url: `${process.env.CLIENT_URL}/checkout/success`, // Replace with your success URL
+      confirm: true, // Immediately confirm the payment
     });
 
-    // Respond with the session URL for frontend redirection
+
+    console.log("Success bank payment",paymentIntent);
+
     res.status(200).json({
-      message: 'Successfully created iDEAL payment session.',
-      paymentUrl: session.url,
+      message: 'Successfully created and confirmed iDEAL payment intent.',
+      client_secret: paymentIntent.client_secret, // Optional: Only needed if further confirmation is required
     });
   } catch (err) {
-    console.error('Error creating iDEAL payment session:', err.message);
+    console.error('Error creating iDEAL payment intent:', err.message);
     res.status(500).json({
-      error: 'Failed to create payment session.',
+      error: 'Failed to create iDEAL payment intent.',
       details: err.message,
     });
   }
 };
+
+
+
+// export const payWithIdeal = async (req, res) => {
+//   const {
+//     dataPass: { method },
+//     items,
+//   } = req.body;
+
+//   // Validate input
+//   if (!items || !Array.isArray(items) || items.length === 0) {
+//     return res.status(400).json({ error: 'Items array is required and cannot be empty.' });
+//   }
+
+//   if (!method || method !== 'ideal') {
+//     return res.status(400).json({ error: 'Invalid or missing payment method.' });
+//   }
+
+//   try {
+//     // Calculate the total amount in cents
+//     const totalAmount = items.reduce((total, item) => {
+//       if (
+//         !item.price ||
+//         !item.quantity ||
+//         typeof item.price !== 'number' ||
+//         typeof item.quantity !== 'number'
+//       ) {
+//         throw new Error('Each item must have a valid price and quantity.');
+//       }
+//       return total + Math.round(item.price * item.quantity * 100); // Convert to cents
+//     }, 0);
+
+//     // Create a Stripe checkout session
+//     const session = await stripe.checkout.sessions.create({
+//       payment_method_types: ['ideal'], // iDEAL payment method
+//       line_items: items.map((item) => ({
+//         price_data: {
+//           currency: 'eur', // Currency for iDEAL payments
+//           product_data: {
+//             name: item.name,
+//             description: `${item.storage}, ${item.color}, ${item.condition}`, // Item details
+//             images: [item.image], // Product image
+//           },
+//           unit_amount: Math.round(item.price * 100), // Convert price to cents
+//         },
+//         quantity: item.quantity,
+//       })),
+//       mode: 'payment',
+
+//       success_url: `${process.env.CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`, // Update with your frontend success URL
+//   cancel_url: `${process.env.CLIENT_URL}/checkout/cancel`, // Update with your frontend cancel URL
+
+     
+//     });
+
+//     // Respond with the session URL for frontend redirection
+//     res.status(200).json({
+//       message: 'Successfully created iDEAL payment session.',
+//       paymentUrl: session.url,
+//     });
+//   } catch (err) {
+//     console.error('Error creating iDEAL payment session:', err.message);
+//     res.status(500).json({
+//       error: 'Failed to create payment session.',
+//       details: err.message,
+//     });
+//   }
+// };
