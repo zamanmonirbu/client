@@ -3,8 +3,7 @@ const { createPayment, getPaymentStatus } = require('../services/mollieService')
 
 exports.initiatePayment = async (req, res) => {
   try {
-    const { items, method } = req.body;
-    
+    const { items, method } = req.body;    
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No items found for payment.' });
